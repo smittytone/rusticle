@@ -36,7 +36,11 @@ fn main() {
             }
 
             let pixel = imgbuf.get_pixel_mut(x, y);
+
+            // Read RGB value of pixel
             let image::Rgb(data) = *pixel;
+
+            // Set the green value of the pixel, preserving red and blue
             *pixel = image::Rgb([data[0], i as u8, data[2]]);
         }
     }
