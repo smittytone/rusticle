@@ -35,6 +35,8 @@ fn main() {
         *pixel = image::Rgb([r, 0, b]);
     }
 
+    // julia(img_x, img_y, &img_buf);
+
     let scale_x = 2.4 / img_x as f32;
     let scale_y = 2.4 / img_y as f32;
 
@@ -93,7 +95,7 @@ fn parse_pair(string: &str, separator: char) -> (u32, u32) {
 }
 
 /*
-fn julia<P: image::Pixel, C>(img_x: u32, img_y: u32, img_buf: image::ImageBuffer<P, C>) {
+fn julia<P: image::Pixel, C>(img_x: u32, img_y: u32, &img_buf: image::ImageBuffer<P, C>) {
 
     let scale_x = 2.4 / img_x as f32;
     let scale_y = 2.4 / img_y as f32;
@@ -112,7 +114,7 @@ fn julia<P: image::Pixel, C>(img_x: u32, img_y: u32, img_buf: image::ImageBuffer
                 i += 1;
             }
 
-            let pixel = img_buf.get_pixel_mut(x, y);
+            let pixel = *img_buf.get_pixel_mut(x, y);
 
             // Read RGB value of pixel
             let image::Rgb(data) = *pixel;
