@@ -1,3 +1,7 @@
+/*
+ * IMPORTS
+ *
+ */
 extern crate image;
 extern crate num_complex;
 
@@ -5,6 +9,10 @@ use image::{ImageBuffer, Rgb};
 use std::str::FromStr;
 
 
+/*
+ * CONSTANTS
+ *
+ */
 const TYPE_JULIA_SET: u8 = 0;
 const TYPE_MANDEL_SET: u8 = 1;
 
@@ -194,13 +202,13 @@ impl Set {
 fn main() {
 
     // Get the command line arguments except the first
-    //let _args: Vec<String> = std::env::args().collect();
-
-    // TODO Clean up the arg processing
     let input = parse_args();
 
     // Generate the chosen Set
-    let mut set = Set::new(input.image_size.0, input.image_size.1, input.image_type, input.debug);
+    let mut set = Set::new(input.image_size.0,
+                           input.image_size.1,
+                           input.image_type,
+                           input.debug);
     set.render();
 
     // Write out the image buffer
