@@ -1,8 +1,70 @@
 extern crate image;
 extern crate num_complex;
 
+use image::{ImageBuffer, Rgb};
 use std::str::FromStr;
 
+
+struct JuliaSet {
+    image_buf: image::ImageBuffer<Rgb<u8>, Vec<u8>>
+}
+
+impl JuliaSet {
+
+    pub fn new(width: u32, height: u32) -> JuliaSet {
+
+        // Create a new buffer
+        let mut image_buf = ImageBuffer::new(width, height);
+
+        // Set the background: sweep of red and blue colour values
+        let delta = 255.0 / width as f32;
+        for (x, y, pixel) in image_buf.enumerate_pixels_mut() {
+            let r = (delta * y as f32) as u8;
+            let b = (delta * x as f32) as u8;
+            *pixel = image::Rgb([r, 0, b]);
+        }
+
+        // Return a new JuliaSet with the image buffer
+        JuliaSet { image_buf: image_buf }
+    }
+
+    pub fn render(&mut self) {
+
+        // Set the image scaling
+        let scale_x = 2.4 / self.image_buf.width() as f32;
+        let scale_y = 2.4 / self.image_buf.height() as f32;
+
+        for x in 0..self.image_buf.width() {
+            for y in 0..self.image_buf.height() {
+                // Generate  the number of iterations for a given pixel
+                let cx = y as f32 * scale_x - 1.0;
+                let cy = x as f32 * scale_y - 1.0;
+
+                let c = num_complex::Complex::new(-0.4, 0.6);
+                let mut z = num_complex::Complex::new(cx, cy);
+
+                let mut i = 0;
+                while i < 255 && z.norm() <= 2.0 {
+                    z = z * z + c;
+                    i += 1;
+                }
+
+                // Read the current RGB value of the pixel
+                let pixel = self.image_buf.get_pixel_mut(x, y);
+                let Rgb(data) = *pixel;
+
+                // Write the RGB value back, adding the green value, and
+                // preserving the red and blue background values
+                *pixel = Rgb([data[0], i as u8, data[2]]);
+            }
+        }
+    }
+
+    pub fn save(&self, file_name: String) {
+        // Output the image to disk
+        self.image_buf.save(file_name).expect("[ERROR] Could not save image file");
+    }
+}
 
 
 fn main() {
@@ -16,53 +78,12 @@ fn main() {
     let size = parse_pair(&args[1], 'x');
 
     // Set the image dimensions
-    let img_x = if size.0 == 0 { 4000 } else { size.0 };
-    let img_y = if size.1 == 0 { 4000 } else { size.1 };
+    let img_width = if size.0 == 0 { 4000 } else { size.0 };
+    let img_height = if size.1 == 0 { 4000 } else { size.1 };
 
     // Get the output filename, or set a default
     let mut file_name = "render.png".to_string();
     if args.len() >= 3 { file_name = args[2].clone(); }
-
-    // Create a new ImgBuf with width: imgx and height: imgy
-    let mut img_buf = image::ImageBuffer::new(img_x, img_y);
-
-    // Iterate over the coordinates and pixels of the image
-    // This adds the red/blue background
-    let delta = 255.0 / img_x as f32;
-    for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
-        let r = (delta * y as f32) as u8;
-        let b = (delta * x as f32) as u8;
-        *pixel = image::Rgb([r, 0, b]);
-    }
-
-    // julia(img_x, img_y, &img_buf);
-
-    let scale_x = 2.4 / img_x as f32;
-    let scale_y = 2.4 / img_y as f32;
-
-    for x in 0..img_x {
-        for y in 0..img_y {
-            let cx = y as f32 * scale_x - 1.0;
-            let cy = x as f32 * scale_y - 1.0;
-
-            let c = num_complex::Complex::new(-0.4, 0.6);
-            let mut z = num_complex::Complex::new(cx, cy);
-
-            let mut i = 0;
-            while i < 255 && z.norm() <= 2.0 {
-                z = z * z + c;
-                i += 1;
-            }
-
-            let pixel = img_buf.get_pixel_mut(x, y);
-
-            // Read RGB value of pixel
-            let image::Rgb(data) = *pixel;
-
-            // Set the green value of the pixel, preserving red and blue
-            *pixel = image::Rgb([data[0], i as u8, data[2]]);
-        }
-    }
 
     // If the filename doesn't contain '.png', add it
     match &file_name.find(".png") {
@@ -70,10 +91,15 @@ fn main() {
         Some(_index) => {}
     };
 
+    println!("Rendered image size: {}x{}", img_width, img_height);
     println!{"File: {}", file_name};
 
+    // Generate the Julia Set
+    let mut julia_set = JuliaSet::new(img_width, img_height);
+    julia_set.render();
+
     // Write out the image buffer
-    img_buf.save(&file_name).unwrap();
+    julia_set.save(file_name);
 }
 
 
@@ -93,35 +119,3 @@ fn parse_pair(string: &str, separator: char) -> (u32, u32) {
         }
     };
 }
-
-/*
-fn julia<P: image::Pixel, C>(img_x: u32, img_y: u32, &img_buf: image::ImageBuffer<P, C>) {
-
-    let scale_x = 2.4 / img_x as f32;
-    let scale_y = 2.4 / img_y as f32;
-
-    for x in 0..img_x {
-        for y in 0..img_y {
-            let cx = y as f32 * scale_x - 1.0;
-            let cy = x as f32 * scale_y - 1.0;
-
-            let c = num_complex::Complex::new(-0.4, 0.6);
-            let mut z = num_complex::Complex::new(cx, cy);
-
-            let mut i = 0;
-            while i < 255 && z.norm() <= 2.0 {
-                z = z * z + c;
-                i += 1;
-            }
-
-            let pixel = *img_buf.get_pixel_mut(x, y);
-
-            // Read RGB value of pixel
-            let image::Rgb(data) = *pixel;
-
-            // Set the green value of the pixel, preserving red and blue
-            *pixel = image::Rgb([data[0], i as u8, data[2]]);
-        }
-    }
-}
-*/
