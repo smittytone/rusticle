@@ -68,7 +68,9 @@ impl Set {
         let mut image_buf = ImageBuffer::new(width, height);
 
         // Set the background: sweep of red and blue colour values
-        let delta = 255.0 / width as f32;
+        let mut delta = 255.0 / width as f32;
+        if height > width { delta = 255.0 / height as f32; }
+
         for (x, y, pixel) in image_buf.enumerate_pixels_mut() {
             let r = (delta * y as f32) as u8;
             let b = (delta * x as f32) as u8;
