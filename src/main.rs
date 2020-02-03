@@ -104,11 +104,16 @@ impl Set {
         let render_data = self.centre_image();
         if self.debug { println!("Rendering Julia Set @ {}x{}", self.image_buf.width(), self.image_buf.height()); }
 
+        let y_delta = (render_data.height as f32 / 2.0) * render_data.scale_y;
+        let x_delta = 1.35; //(render_data.width as f32 / 2.0) * render_data.scale_x;
+
+        println!("XD {}, YD {}", x_delta, y_delta);
+
         for x in 0..render_data.width {
             for y in 0..render_data.height {
                 // Generate  the number of iterations for a given pixel
-                let cx = y as f32 * render_data.scale_x - 1.0;
-                let cy = x as f32 * render_data.scale_y - 1.0;
+                let cy = y as f32 * render_data.scale_y - y_delta;
+                let cx = x as f32 * render_data.scale_x - x_delta;
 
                 let c = num_complex::Complex::new(-0.4, 0.6);
                 let mut z = num_complex::Complex::new(cx, cy);
@@ -181,7 +186,7 @@ impl Set {
         }
 
         // Set the image scaling
-        let scale_base = if self.set_type == TYPE_JULIA_SET { 2.4 } else { 2.2 };
+        let scale_base = if self.set_type == TYPE_JULIA_SET { 2.6 } else { 2.2 };
         let scale_x = scale_base / width as f32;
         let scale_y = scale_base / height as f32;
 
