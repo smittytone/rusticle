@@ -13,7 +13,7 @@ use std::str::FromStr;
  * CONSTANTS
  *
  */
-const TYPE_JULIA_SET: u8 = 0;
+const TYPE_JULIA_SET: u8  = 0;
 const TYPE_MANDEL_SET: u8 = 1;
 
 
@@ -25,7 +25,7 @@ const TYPE_MANDEL_SET: u8 = 1;
 /*
  * Simple struct for command line args
  */
-struct Args {
+struct Input {
     image_size: (u32, u32),
     image_name: String,
     image_type: u8,
@@ -36,7 +36,7 @@ struct Args {
 /*
  * Simple struct to hold drawing data
  */
-struct Scales {
+struct RenderData {
     height: u32,
     width: u32,
     scale_x: f32,
@@ -101,14 +101,14 @@ impl Set {
     fn render_julia(&mut self) {
 
         // Render the Julia Set
-        let scales = self.centre_image();
+        let render_data = self.centre_image();
         if self.debug { println!("Rendering Julia Set @ {}x{}", self.image_buf.width(), self.image_buf.height()); }
 
-        for x in 0..scales.width {
-            for y in 0..scales.height {
+        for x in 0..render_data.width {
+            for y in 0..render_data.height {
                 // Generate  the number of iterations for a given pixel
-                let cx = y as f32 * scales.scale_x - 1.0;
-                let cy = x as f32 * scales.scale_y - 1.0;
+                let cx = y as f32 * render_data.scale_x - 1.0;
+                let cy = x as f32 * render_data.scale_y - 1.0;
 
                 let c = num_complex::Complex::new(-0.4, 0.6);
                 let mut z = num_complex::Complex::new(cx, cy);
@@ -120,7 +120,7 @@ impl Set {
                 }
 
                 // Read the current RGB value of the pixel
-                let pixel = self.image_buf.get_pixel_mut(x + scales.x_offset, y + scales.y_offset);
+                let pixel = self.image_buf.get_pixel_mut(x + render_data.x_offset, y + render_data.y_offset);
                 let Rgb(data) = *pixel;
 
                 // Write the RGB value back, adding the green value, and
@@ -133,17 +133,17 @@ impl Set {
     fn render_mandel(&mut self) {
 
         // Render the Mandelbrot Set
-        let scales = self.centre_image();
+        let render_data = self.centre_image();
         if self.debug { println!("Rendering Mandelbrot Set @ {}x{}", self.image_buf.width(), self.image_buf.height()); }
 
         let x_delta = 1.54; // 70% of width
-        let y_delta = (scales.height as f32 / 2.0) * scales.scale_y;
+        let y_delta = (render_data.height as f32 / 2.0) * render_data.scale_y;
 
-        for x in 0..scales.width {
-            for y in 0..scales.height {
+        for x in 0..render_data.width {
+            for y in 0..render_data.height {
                 // Generate  the number of iterations for a given pixel
-                let cx = x as f32 * scales.scale_x - x_delta;
-                let cy = y as f32 * scales.scale_y - y_delta;
+                let cx = x as f32 * render_data.scale_x - x_delta;
+                let cy = y as f32 * render_data.scale_y - y_delta;
 
                 let c = num_complex::Complex::new(cx, cy);
                 let mut z = num_complex::Complex::new(0.0, 0.0);
@@ -155,7 +155,7 @@ impl Set {
                 }
 
                 // Read the current RGB value of the pixel
-                let pixel = self.image_buf.get_pixel_mut(x + scales.x_offset, y + scales.y_offset);
+                let pixel = self.image_buf.get_pixel_mut(x + render_data.x_offset, y + render_data.y_offset);
                 let Rgb(data) = *pixel;
 
                 // Write the RGB value back, adding the green value, and
@@ -165,7 +165,7 @@ impl Set {
         }
     }
 
-    fn centre_image(&mut self) -> Scales {
+    fn centre_image(&mut self) -> RenderData {
         // Render into a square in the centre of the window
         let mut width: u32 = self.image_buf.width();
         let mut height: u32 = self.image_buf.height();
@@ -186,7 +186,7 @@ impl Set {
         let scale_y = scale_base / height as f32;
 
         // Return the drawing values
-        Scales { width: width,
+        RenderData { width: width,
                  height: height,
                  scale_x: scale_x,
                  scale_y: scale_y,
@@ -221,16 +221,16 @@ fn main() {
 /*
  * Parse the command line arguments
  */
-fn parse_args() -> Args {
+fn parse_args() -> Input {
 
     // Get the command line arguments except the first
     let mut args: Vec<String> = std::env::args().collect();
 
     // Set the defaults
-    let mut values = Args { image_size: (400, 400),
-                            image_type: TYPE_MANDEL_SET,
-                            image_name: "fractal.png".to_string(),
-                            debug: false };
+    let mut values = Input { image_size: (400, 400),
+                             image_type: TYPE_MANDEL_SET,
+                             image_name: "fractal.png".to_string(),
+                             debug: false };
 
     let mut is_value = false;
     let mut arg_type: i32 = -1;
