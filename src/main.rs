@@ -15,6 +15,17 @@ const TYPE_MANDEL_SET: u8 = 1;
  */
 
 /*
+ * Simple struct for command line args
+ */
+struct Args {
+    image_size: (u32, u32),
+    image_name: String,
+    image_type: u8,
+    debug: bool
+}
+
+
+/*
  * Simple struct to hold drawing data
  */
 struct Scales {
@@ -26,19 +37,21 @@ struct Scales {
     y_offset: u32
 }
 
+
 /*
  * A struct for rendering and saving various fractal sets
  */
 struct Set {
     image_buf: image::ImageBuffer<Rgb<u8>, Vec<u8>>,
-    set_type: u8
+    set_type: u8,
+    debug: bool
 }
 
 impl Set {
 
-    pub fn new(width: u32, height: u32, mut set_type:u8) -> Set {
+    pub fn new(width: u32, height: u32, mut set_type: u8, debug: bool) -> Set {
 
-        // Check the type
+        // Check the type -- probably a better way of doing this
         if set_type != TYPE_JULIA_SET && set_type != TYPE_MANDEL_SET {
             set_type = TYPE_JULIA_SET;
         }
@@ -56,17 +69,16 @@ impl Set {
 
         // Return a new JuliaSet with the image buffer
         Set { image_buf: image_buf,
-              set_type: set_type }
+              set_type: set_type,
+              debug: debug }
     }
 
     pub fn render(&mut self) {
 
         // Select the correct renderer for the specified set type
         match self.set_type {
-            TYPE_MANDEL_SET => { println!("Rendering Mandelbrot Set");
-                                 self.render_mandel(); }
-            _ => { println!("Rendering Julia Set");
-                   self.render_julia(); }
+            TYPE_MANDEL_SET =>  { self.render_mandel(); }
+            _ =>                { self.render_julia(); }
         }
     }
 
@@ -80,6 +92,7 @@ impl Set {
 
         // Render the Julia Set
         let scales = self.centre_image();
+        if self.debug { println!("Rendering Julia Set @ {}x{}", self.image_buf.width(), self.image_buf.height()); }
 
         for x in 0..scales.width {
             for y in 0..scales.height {
@@ -111,6 +124,8 @@ impl Set {
 
         // Render the Mandelbrot Set
         let scales = self.centre_image();
+        if self.debug { println!("Rendering Mandelbrot Set @ {}x{}", self.image_buf.width(), self.image_buf.height()); }
+
         let x_delta = 1.54; // 70% of width
         let y_delta = (scales.height as f32 / 2.0) * scales.scale_y;
 
@@ -171,51 +186,115 @@ impl Set {
 }
 
 
+/*
+ * RUNTIME START
+ *
+ */
+
 fn main() {
 
     // Get the command line arguments except the first
-    let args: Vec<String> = std::env::args().collect();
+    //let _args: Vec<String> = std::env::args().collect();
 
     // TODO Clean up the arg processing
+    let input = parse_args();
 
-    // Parse the image size
-    let size = parse_pair(&args[1], 'x');
-
-    // Set the image dimensions
-    let img_width = if size.0 == 0 { 4000 } else { size.0 };
-    let img_height = if size.1 == 0 { 4000 } else { size.1 };
-
-    // Get the output filename, or set a default
-    let mut file_name = "render.png".to_string();
-    if args.len() >= 3 { file_name = args[2].clone(); }
-
-    let set_type = match u32::from_str(&args[3]) {
-        Ok(value) => value,
-        Err(err) => {
-            println!("[ERROR] invalid type value ({})", err);
-            std::process::exit(1);
-        }
-    };
-
-    // If the filename doesn't contain '.png', add it
-    match &file_name.find(".png") {
-        None => { file_name.push_str(".png") },
-        Some(_index) => {}
-    };
-
-    println!("Rendered image size: {}x{}", img_width, img_height);
-    println!{"File: {}", file_name};
-
-    // Generate the Julia Set
-    let mut set = Set::new(img_width, img_height, set_type as u8);
+    // Generate the chosen Set
+    let mut set = Set::new(input.image_size.0, input.image_size.1, input.image_type, input.debug);
     set.render();
 
     // Write out the image buffer
-    set.save(file_name);
+    set.save(input.image_name);
 }
 
 
-// Parse a pair of arguments into a tuple
+/*
+ * Parse the command line arguments
+ */
+fn parse_args() -> Args {
+
+    // Get the command line arguments except the first
+    let mut args: Vec<String> = std::env::args().collect();
+
+    // Set the defaults
+    let mut values = Args { image_size: (400, 400),
+                            image_type: TYPE_MANDEL_SET,
+                            image_name: "fractal.png".to_string(),
+                            debug: false };
+
+    let mut is_value = false;
+    let mut arg_type: i32 = -1;
+
+    for i in 1..args.len() {
+        let arg = &mut args[i];
+        if is_value {
+            is_value = false;
+
+            match arg_type {
+                0 => {
+                    let size = parse_pair(arg, 'x');
+                    let width = if size.0 == 0 { 400 } else { size.0 };
+                    let height = if size.1 == 0 { 400 } else { size.1 };
+                    values.image_size = (width, height);
+                }
+                1 => {
+                    values.image_type = match u8::from_str(arg) {
+                        Ok(value) => value,
+                        Err(_err) => {
+                            println!("[ERROR] invalid type value ({})", arg);
+                            std::process::exit(1);
+                        }
+                    };
+                }
+                2 => {
+                    let mut arg_string = arg.to_string();
+                    match arg_string.find(".png") {
+                        None => { arg_string.push_str(".png") },
+                        Some(_index) => {}
+                    };
+
+                    values.image_name = arg_string;
+                }
+                _ => {
+                    println!("[ERROR] bad option argument ({})", arg);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            let arg_string = arg.to_string().to_lowercase();
+            match &arg_string[..] {
+                "-s" | "--size" => {
+                    // Set the
+                    is_value = true;
+                    arg_type = 0;
+                }
+                "-t" | "--type" => {
+                    is_value = true;
+                    arg_type = 1;
+                }
+                "-o" | "--out" => {
+                    is_value = true;
+                    arg_type = 2;
+                }
+                "-v" | "--verbose" => {
+                    values.debug = true;
+                }
+                _ => {
+                    println!("[ERROR] unknown option ({})", arg_string);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+
+    values
+}
+
+
+/*
+ * Extract two values in a multiplex argument, eg. 567x789 into a
+ * two-value tuple
+ */
 fn parse_pair(string: &str, separator: char) -> (u32, u32) {
 
     match string.find(separator) {
