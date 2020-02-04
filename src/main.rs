@@ -13,7 +13,7 @@ use std::str::FromStr;
  * CONSTANTS
  *
  */
-const TYPE_JULIA_SET: u8  = 0;
+const TYPE_JULIA_SET:  u8 = 0;
 const TYPE_MANDEL_SET: u8 = 1;
 
 
