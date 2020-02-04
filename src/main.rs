@@ -13,8 +13,9 @@ use std::str::FromStr;
  * CONSTANTS
  *
  */
-const TYPE_JULIA_SET:  u8 = 0;
-const TYPE_MANDEL_SET: u8 = 1;
+const TYPE_JULIA_SET: u8 = 0;
+const TYPE_MANDL_SET: u8 = 1;
+const JULIA_ASPECT_RATIO: f32 = 1.5;
 
 
 /*
@@ -60,7 +61,7 @@ impl Set {
     pub fn new(width: u32, height: u32, mut set_type: u8, debug: bool) -> Set {
 
         // Check the type -- probably a better way of doing this
-        if set_type != TYPE_JULIA_SET && set_type != TYPE_MANDEL_SET {
+        if set_type != TYPE_JULIA_SET && set_type != TYPE_MANDL_SET {
             set_type = TYPE_JULIA_SET;
         }
 
@@ -87,7 +88,7 @@ impl Set {
 
         // Select the correct renderer for the specified set type
         match self.set_type {
-            TYPE_MANDEL_SET =>  { self.render_mandel(); }
+            TYPE_MANDL_SET =>  { self.render_mandel(); }
             _ =>                { self.render_julia(); }
         }
     }
@@ -102,12 +103,12 @@ impl Set {
 
         // Render the Julia Set
         let render_data = self.centre_image();
-        if self.debug { println!("Rendering Julia Set @ {}x{}", self.image_buf.width(), self.image_buf.height()); }
+        if self.debug {
+            println!("Rendering Julia Set @ {}x{} in window {}x{}", render_data.width, render_data.height, self.image_buf.width(), self.image_buf.height());
+        }
 
-        let y_delta = (render_data.height as f32 / 2.0) * render_data.scale_y;
-        let x_delta = 1.35; //(render_data.width as f32 / 2.0) * render_data.scale_x;
-
-        println!("XD {}, YD {}", x_delta, y_delta);
+        let y_delta = 1.0;
+        let x_delta = 1.5;
 
         for x in 0..render_data.width {
             for y in 0..render_data.height {
@@ -139,9 +140,11 @@ impl Set {
 
         // Render the Mandelbrot Set
         let render_data = self.centre_image();
-        if self.debug { println!("Rendering Mandelbrot Set @ {}x{}", self.image_buf.width(), self.image_buf.height()); }
+        if self.debug {
+            println!("Rendering Mandelbrot Set @ {}x{} in window {}x{}", render_data.width, render_data.height, self.image_buf.width(), self.image_buf.height());
+        }
 
-        let x_delta = 1.54; // 70% of width
+        let x_delta = 1.6; // 70% of width
         let y_delta = (render_data.height as f32 / 2.0) * render_data.scale_y;
 
         for x in 0..render_data.width {
@@ -177,26 +180,51 @@ impl Set {
         let mut x_offset: u32 = 0;
         let mut y_offset: u32 = 0;
 
-        if width > height {
-            x_offset = (width - height) / 2;
-            width = height;
-        } else if height > width {
-            y_offset = (height - width) / 2;
-            height = width;
+        match self.set_type {
+            TYPE_JULIA_SET => {
+                // Set renders to a landscape image mapped to the
+                // width of the window (in portrait mode) or the
+                // height (landscape)
+                if width >= height {
+                    let new_width = (height as f32 * JULIA_ASPECT_RATIO) as u32;
+                    if new_width > width {
+                        let new_height = (height as f32 / JULIA_ASPECT_RATIO) as u32;
+                        y_offset = (height - new_height) / 2;
+                        height = new_height;
+                    } else {
+                        x_offset = (width - new_width) / 2;
+                        width = new_width;
+                    }
+                } else {
+                    let new_height = (width as f32 / JULIA_ASPECT_RATIO) as u32;
+                    y_offset = (height - new_height) / 2;
+                    height = new_height;
+                }
+            }
+            _ => {
+                // Default matches the Mandelbrot parameters:
+                // render a square image within the window
+                if width > height {
+                    x_offset = (width - height) / 2;
+                    width = height;
+                } else if height > width {
+                    y_offset = (height - width) / 2;
+                    height = width;
+                }
+            }
         }
 
         // Set the image scaling
-        let scale_base = if self.set_type == TYPE_JULIA_SET { 2.6 } else { 2.2 };
-        let scale_x = scale_base / width as f32;
-        let scale_y = scale_base / height as f32;
+        let scale_x = if self.set_type == TYPE_JULIA_SET { 3.0 / width as f32 } else { 2.2 / width as f32 };
+        let scale_y = if self.set_type == TYPE_JULIA_SET { 2.0 / height as f32 } else { 2.2 / height as f32 };
 
         // Return the drawing values
         RenderData { width: width,
-                 height: height,
-                 scale_x: scale_x,
-                 scale_y: scale_y,
-                 x_offset: x_offset,
-                 y_offset: y_offset }
+                     height: height,
+                     scale_x: scale_x,
+                     scale_y: scale_y,
+                     x_offset: x_offset,
+                     y_offset: y_offset }
     }
 }
 
@@ -233,7 +261,7 @@ fn parse_args() -> Input {
 
     // Set the defaults
     let mut values = Input { image_size: (400, 400),
-                             image_type: TYPE_MANDEL_SET,
+                             image_type: TYPE_MANDL_SET,
                              image_name: "fractal.png".to_string(),
                              debug: false };
 
