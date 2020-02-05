@@ -282,7 +282,7 @@ fn parse_args() -> Input {
 
                     // If there's no .png file extension, add one
                     match arg_string.find(".png") {
-                        None => { arg_string.push_str(".png") },
+                        None => arg_string.push_str(".png"),
                         Some(_index) => {}
                     };
 
