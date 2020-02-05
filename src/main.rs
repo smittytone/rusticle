@@ -332,6 +332,10 @@ fn parse_args() -> Input {
                 "-v" | "--verbose" => {
                     values.debug = true;
                 }
+                "-h" | "--help" => {
+                    show_help();
+                    std::process::exit(0);
+                }
                 _ => {
                     println!("[ERROR] unknown option ({})", arg_string);
                     std::process::exit(1);
@@ -342,6 +346,26 @@ fn parse_args() -> Input {
 
     // Return parsed input values
     values
+}
+
+/*
+ * Present help info
+ *
+ */
+fn show_help() {
+
+    if let Some(version) = option_env!("CARGO_PKG_VERSION") {
+        println!("\nFractals version {}\n", version);
+    } else {
+        println!("\nFractals\n");
+    }
+
+    println!("Usage:\n  fractals -s <width>x<height> -t <0/1> -o <output file path> -v\n");
+    println!("Options:\n  -s / --size <width>x<height>  The size of the rendered image in pixels. Default: 400x400");
+    println!("  -t / --type <value>           The type of set: 0 for Julia, 1 for Mandelbrot. Default: 1");
+    println!("  -o / --out  <file path>       The name and path of the image file to be created");
+    println!("  -v / --verbose                Display information during processing\n");
+    println!("  -h / --help                   This information screen\n");
 }
 
 
