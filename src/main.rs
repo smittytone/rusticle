@@ -284,10 +284,9 @@ fn parse_args() -> Input {
                     let mut arg_string = arg.to_string();
 
                     // If there's no .png file extension, add one
-                    match arg_string.find(".png") {
-                        None => arg_string.push_str(".png"),
-                        Some(_index) => {}
-                    };
+                    if let None = arg_string.find(".png") {
+                        arg_string.push_str(".png");
+                    }
 
                     // Check for an initial ~ and, if present, expand it to the home directory
                     if &arg[..1] == "~" {
@@ -296,7 +295,7 @@ fn parse_args() -> Input {
                         //         to a Option<&str> and then to a String
                         // NOTE #2 It's '_home_string' not 'home_string' to silence
                         //         a 'variable not read' compiler error
-                        let mut _home_string = "".to_string();
+                        let mut _home_string = String::from("");
                         if let Some(home_path) = dirs::home_dir() {
                             if let Some(home_str) = home_path.to_str() {
                                 _home_string = home_str.to_string();
