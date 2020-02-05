@@ -50,12 +50,7 @@ struct Set {
 
 impl Set {
 
-    pub fn new(width: u32, height: u32, mut set_type: u8, debug: bool) -> Set {
-
-        // Check the type -- probably a better way of doing this
-        if set_type != TYPE_JULIA_SET && set_type != TYPE_MANDL_SET {
-            set_type = TYPE_JULIA_SET;
-        }
+    pub fn new(width: u32, height: u32, set_type: u8, debug: bool) -> Set {
 
         // Create a new buffer
         let mut image_buf = ImageBuffer::new(width, height);
@@ -121,7 +116,6 @@ impl Set {
 
         let scale_x = JULIA_X_SCALE_FACTOR / width as f32;
         let scale_y = JULIA_Y_SCALE_FACTOR / height as f32;
-
 
         if self.debug {
             println!("Rendering Julia Set @ {}x{} in window {}x{}", width, height, self.image_buf.width(), self.image_buf.height());
@@ -261,6 +255,8 @@ fn parse_args() -> Input {
         if is_value {
             is_value = false;
 
+            // TODO check for an initial -, ie. missing value
+
             match arg_type {
                 0 => {
                     let size = parse_pair(arg, 'x');
@@ -269,13 +265,20 @@ fn parse_args() -> Input {
                     values.image_size = (width, height);
                 }
                 1 => {
-                    values.image_type = match u8::from_str(arg) {
-                        Ok(value) => value,
-                        Err(_err) => {
-                            println!("[ERROR] invalid type value ({})", arg);
-                            std::process::exit(1);
+                    if let Ok(value) = u8::from_str(arg) {
+                        // Check the type value
+                        match value {
+                            TYPE_JULIA_SET => values.image_type = value,
+                            TYPE_MANDL_SET => values.image_type = value,
+                            _ => {
+                                println!("[ERROR] invalid type value ({})", value);
+                                std::process::exit(1);
+                            }
                         }
-                    };
+                    } else {
+                        println!("[ERROR] invalid type value ({})", arg);
+                        std::process::exit(1);
+                    }
                 }
                 2 => {
                     let mut arg_string = arg.to_string();
@@ -293,15 +296,12 @@ fn parse_args() -> Input {
                         //         to a Option<&str> and then to a String
                         // NOTE #2 It's '_home_string' not 'home_string' to silence
                         //         a 'variable not read' compiler error
-                        let mut _home_string = match dirs::home_dir() {
-                            None => "".to_string(),
-                            Some(home_path) => {
-                                match home_path.to_str() {
-                                    None => "".to_string(),
-                                    Some(str_path) => str_path.to_string()
-                                }
+                        let mut _home_string = "".to_string();
+                        if let Some(home_path) = dirs::home_dir() {
+                            if let Some(home_str) = home_path.to_str() {
+                                _home_string = home_str.to_string();
                             }
-                        };
+                        }
 
                         // Replace the ~ with the home directory
                         arg_string = arg_string.replace("~", &_home_string);
@@ -341,6 +341,7 @@ fn parse_args() -> Input {
         }
     }
 
+    // Return parsed input values
     values
 }
 
@@ -351,16 +352,12 @@ fn parse_args() -> Input {
  */
 fn parse_pair(string: &str, separator: char) -> (u32, u32) {
 
-    match string.find(separator) {
-        // Return usable 'nil' tuple on error, ie. no separator found
-        None => { return (0, 0); }
-        Some(index) => {
-            // Decode the two strings either side of the separator into u32s,
-            // and return as tuple if good, or (0, 0) if not
-            match (u32::from_str(&string[..index]), u32::from_str(&string[index + 1..])) {
-                (Ok(left_arg), Ok(right_arg)) => return { (left_arg, right_arg) },
-                _ => { return (0, 0); }
-            }
+    if let Some(index) = string.find(separator) {
+        if let (Ok(left_arg), Ok(right_arg)) = (u32::from_str(&string[..index]), u32::from_str(&string[index + 1..])) {
+            return (left_arg, right_arg);
         }
-    };
+    }
+
+    // Return fail result
+    (0,0)
 }
