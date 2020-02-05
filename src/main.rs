@@ -4,9 +4,11 @@
  */
 extern crate image;
 extern crate num_complex;
+extern crate dirs;
 
 use image::{ImageBuffer, Rgb};
 use std::str::FromStr;
+
 
 
 /*
@@ -16,6 +18,9 @@ use std::str::FromStr;
 const TYPE_JULIA_SET: u8 = 0;
 const TYPE_MANDL_SET: u8 = 1;
 const JULIA_ASPECT_RATIO: f32 = 1.5;
+const JULIA_X_SCALE_FACTOR: f32 = 3.0;
+const JULIA_Y_SCALE_FACTOR: f32 = 2.0;
+const MANDL_SCALE_FACTOR: f32 = 2.2;
 
 
 /*
@@ -31,19 +36,6 @@ struct Input {
     image_name: String,
     image_type: u8,
     debug: bool
-}
-
-
-/*
- * Simple struct to hold drawing data
- */
-struct RenderData {
-    height: u32,
-    width: u32,
-    scale_x: f32,
-    scale_y: f32,
-    x_offset: u32,
-    y_offset: u32
 }
 
 
@@ -88,34 +80,65 @@ impl Set {
 
         // Select the correct renderer for the specified set type
         match self.set_type {
-            TYPE_MANDL_SET =>  { self.render_mandel(); }
-            _ =>                { self.render_julia(); }
+            TYPE_MANDL_SET => { self.render_mandel(); }
+            _ =>              { self.render_julia(); }
         }
     }
 
     pub fn save(&self, file_name: String) {
 
         // Output the image to disk
+        if self.debug { println!("Output file path: {}", file_name); }
         self.image_buf.save(file_name).expect("[ERROR] Could not save image file");
     }
 
     fn render_julia(&mut self) {
 
         // Render the Julia Set
-        let render_data = self.centre_image();
-        if self.debug {
-            println!("Rendering Julia Set @ {}x{} in window {}x{}", render_data.width, render_data.height, self.image_buf.width(), self.image_buf.height());
+        let mut width: u32 = self.image_buf.width();
+        let mut height: u32 = self.image_buf.height();
+        let mut x_offset: u32 = 0;
+        let mut y_offset: u32 = 0;
+
+        // Set renders to a landscape image mapped to the
+        // width of the window (in portrait mode) or the
+        // height (landscape)
+        if width >= height {
+            let new_width = (height as f32 * JULIA_ASPECT_RATIO) as u32;
+            if new_width > width {
+                let new_height = (height as f32 / JULIA_ASPECT_RATIO) as u32;
+                y_offset = (height - new_height) / 2;
+                height = new_height;
+            } else {
+                x_offset = (width - new_width) / 2;
+                width = new_width;
+            }
+        } else {
+            let new_height = (width as f32 / JULIA_ASPECT_RATIO) as u32;
+            y_offset = (height - new_height) / 2;
+            height = new_height;
         }
 
+        let scale_x = JULIA_X_SCALE_FACTOR / width as f32;
+        let scale_y = JULIA_Y_SCALE_FACTOR / height as f32;
+
+
+        if self.debug {
+            println!("Rendering Julia Set @ {}x{} in window {}x{}", width, height, self.image_buf.width(), self.image_buf.height());
+        }
+
+        // Set axis deltas: (0,0) -> (0 - x_delta, 0 - y_delta) -> (-1.5, -1.0)
+        // Shifts 0-based axis to Julia Set co-ordinate space
         let y_delta = 1.0;
         let x_delta = 1.5;
 
-        for x in 0..render_data.width {
-            for y in 0..render_data.height {
+        for x in 0..width {
+            for y in 0..height {
                 // Generate  the number of iterations for a given pixel
-                let cy = y as f32 * render_data.scale_y - y_delta;
-                let cx = x as f32 * render_data.scale_x - x_delta;
+                let cy = y as f32 * scale_y - y_delta;
+                let cx = x as f32 * scale_x - x_delta;
 
+                // TODO make these values command line settings
                 let c = num_complex::Complex::new(-0.4, 0.6);
                 let mut z = num_complex::Complex::new(cx, cy);
 
@@ -126,7 +149,7 @@ impl Set {
                 }
 
                 // Read the current RGB value of the pixel
-                let pixel = self.image_buf.get_pixel_mut(x + render_data.x_offset, y + render_data.y_offset);
+                let pixel = self.image_buf.get_pixel_mut(x + x_offset, y + y_offset);
                 let Rgb(data) = *pixel;
 
                 // Write the RGB value back, adding the green value, and
@@ -139,19 +162,38 @@ impl Set {
     fn render_mandel(&mut self) {
 
         // Render the Mandelbrot Set
-        let render_data = self.centre_image();
-        if self.debug {
-            println!("Rendering Mandelbrot Set @ {}x{} in window {}x{}", render_data.width, render_data.height, self.image_buf.width(), self.image_buf.height());
+        let mut width: u32 = self.image_buf.width();
+        let mut height: u32 = self.image_buf.height();
+        let mut x_offset: u32 = 0;
+        let mut y_offset: u32 = 0;
+
+        // Default matches the Mandelbrot parameters:
+        // render a square image within the window
+        if width > height {
+            x_offset = (width - height) / 2;
+            width = height;
+        } else if height > width {
+            y_offset = (height - width) / 2;
+            height = width;
         }
 
-        let x_delta = 1.6; // 70% of width
-        let y_delta = (render_data.height as f32 / 2.0) * render_data.scale_y;
+        // Set the image scaling
+        let scale_x = MANDL_SCALE_FACTOR / width as f32;
+        let scale_y = MANDL_SCALE_FACTOR / height as f32;
 
-        for x in 0..render_data.width {
-            for y in 0..render_data.height {
+        if self.debug {
+            println!("Rendering Mandelbrot Set @ {}x{} in window {}x{}", width, height, self.image_buf.width(), self.image_buf.height());
+        }
+
+        // Shift 0-based axis to Mandelbrot Set co-ordinate space
+        let x_delta = 1.6; // 70% of width
+        let y_delta = (height as f32 / 2.0) * scale_y;
+
+        for x in 0..width {
+            for y in 0..height {
                 // Generate  the number of iterations for a given pixel
-                let cx = x as f32 * render_data.scale_x - x_delta;
-                let cy = y as f32 * render_data.scale_y - y_delta;
+                let cx = x as f32 * scale_x - x_delta;
+                let cy = y as f32 * scale_y - y_delta;
 
                 let c = num_complex::Complex::new(cx, cy);
                 let mut z = num_complex::Complex::new(0.0, 0.0);
@@ -163,7 +205,7 @@ impl Set {
                 }
 
                 // Read the current RGB value of the pixel
-                let pixel = self.image_buf.get_pixel_mut(x + render_data.x_offset, y + render_data.y_offset);
+                let pixel = self.image_buf.get_pixel_mut(x + x_offset, y + y_offset);
                 let Rgb(data) = *pixel;
 
                 // Write the RGB value back, adding the green value, and
@@ -171,60 +213,6 @@ impl Set {
                 *pixel = Rgb([data[0], i as u8, data[2]]);
             }
         }
-    }
-
-    fn centre_image(&mut self) -> RenderData {
-        // Render into a square in the centre of the window
-        let mut width: u32 = self.image_buf.width();
-        let mut height: u32 = self.image_buf.height();
-        let mut x_offset: u32 = 0;
-        let mut y_offset: u32 = 0;
-
-        match self.set_type {
-            TYPE_JULIA_SET => {
-                // Set renders to a landscape image mapped to the
-                // width of the window (in portrait mode) or the
-                // height (landscape)
-                if width >= height {
-                    let new_width = (height as f32 * JULIA_ASPECT_RATIO) as u32;
-                    if new_width > width {
-                        let new_height = (height as f32 / JULIA_ASPECT_RATIO) as u32;
-                        y_offset = (height - new_height) / 2;
-                        height = new_height;
-                    } else {
-                        x_offset = (width - new_width) / 2;
-                        width = new_width;
-                    }
-                } else {
-                    let new_height = (width as f32 / JULIA_ASPECT_RATIO) as u32;
-                    y_offset = (height - new_height) / 2;
-                    height = new_height;
-                }
-            }
-            _ => {
-                // Default matches the Mandelbrot parameters:
-                // render a square image within the window
-                if width > height {
-                    x_offset = (width - height) / 2;
-                    width = height;
-                } else if height > width {
-                    y_offset = (height - width) / 2;
-                    height = width;
-                }
-            }
-        }
-
-        // Set the image scaling
-        let scale_x = if self.set_type == TYPE_JULIA_SET { 3.0 / width as f32 } else { 2.2 / width as f32 };
-        let scale_y = if self.set_type == TYPE_JULIA_SET { 2.0 / height as f32 } else { 2.2 / height as f32 };
-
-        // Return the drawing values
-        RenderData { width: width,
-                     height: height,
-                     scale_x: scale_x,
-                     scale_y: scale_y,
-                     x_offset: x_offset,
-                     y_offset: y_offset }
     }
 }
 
@@ -291,10 +279,33 @@ fn parse_args() -> Input {
                 }
                 2 => {
                     let mut arg_string = arg.to_string();
+
+                    // If there's no .png file extension, add one
                     match arg_string.find(".png") {
                         None => { arg_string.push_str(".png") },
                         Some(_index) => {}
                     };
+
+                    // Check for an initial ~ and, if present, expand it to the home directory
+                    if &arg[..1] == "~" {
+                        // Use dirs::home_dir() to get the home directory.
+                        // NOTE #1 It returns Option<PathBuf> so we convert that
+                        //         to a Option<&str> and then to a String
+                        // NOTE #2 It's '_home_string' not 'home_string' to silence
+                        //         a 'variable not read' compiler error
+                        let mut _home_string = match dirs::home_dir() {
+                            None => "".to_string(),
+                            Some(home_path) => {
+                                match home_path.to_str() {
+                                    None => "".to_string(),
+                                    Some(str_path) => str_path.to_string()
+                                }
+                            }
+                        };
+
+                        // Replace the ~ with the home directory
+                        arg_string = arg_string.replace("~", &_home_string);
+                    }
 
                     values.image_name = arg_string;
                 }
