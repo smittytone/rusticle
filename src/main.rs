@@ -56,13 +56,13 @@ impl Set {
         let mut image_buf = ImageBuffer::new(width, height);
 
         // Set the background: sweep of red and blue colour values
-        let mut delta = 255.0 / width as f32;
+        let mut delta: f32 = 255.0 / width as f32;
         if height > width { delta = 255.0 / height as f32; }
 
         for (x, y, pixel) in image_buf.enumerate_pixels_mut() {
-            let r = (delta * y as f32) as u8;
-            let b = (delta * x as f32) as u8;
-            *pixel = image::Rgb([r, 0, b]);
+            let red: u8 = (delta * y as f32) as u8;
+            let blue: u8 = (delta * x as f32) as u8;
+            *pixel = image::Rgb([red, 0, blue]);
         }
 
         // Return a new JuliaSet with the image buffer
@@ -99,9 +99,9 @@ impl Set {
         // width of the window (in portrait mode) or the
         // height (landscape)
         if width >= height {
-            let new_width = (height as f32 * JULIA_ASPECT_RATIO) as u32;
+            let new_width: u32 = (height as f32 * JULIA_ASPECT_RATIO) as u32;
             if new_width > width {
-                let new_height = (height as f32 / JULIA_ASPECT_RATIO) as u32;
+                let new_height: u32 = (height as f32 / JULIA_ASPECT_RATIO) as u32;
                 y_offset = (height - new_height) / 2;
                 height = new_height;
             } else {
@@ -109,13 +109,13 @@ impl Set {
                 width = new_width;
             }
         } else {
-            let new_height = (width as f32 / JULIA_ASPECT_RATIO) as u32;
+            let new_height: u32 = (width as f32 / JULIA_ASPECT_RATIO) as u32;
             y_offset = (height - new_height) / 2;
             height = new_height;
         }
 
-        let scale_x = JULIA_X_SCALE_FACTOR / width as f32;
-        let scale_y = JULIA_Y_SCALE_FACTOR / height as f32;
+        let scale_x: f32 = JULIA_X_SCALE_FACTOR / width as f32;
+        let scale_y: f32 = JULIA_Y_SCALE_FACTOR / height as f32;
 
         if self.debug {
             println!("Rendering Julia Set @ {}x{} in window {}x{}", width, height, self.image_buf.width(), self.image_buf.height());
@@ -123,20 +123,20 @@ impl Set {
 
         // Set axis deltas: (0,0) -> (0 - x_delta, 0 - y_delta) -> (-1.5, -1.0)
         // Shifts 0-based axis to Julia Set co-ordinate space
-        let y_delta = 1.0;
-        let x_delta = 1.5;
+        let y_delta: f32 = 1.0;
+        let x_delta: f32 = 1.5;
 
         for x in 0..width {
             for y in 0..height {
                 // Generate  the number of iterations for a given pixel
-                let cy = y as f32 * scale_y - y_delta;
-                let cx = x as f32 * scale_x - x_delta;
+                let cy: f32 = y as f32 * scale_y - y_delta;
+                let cx: f32 = x as f32 * scale_x - x_delta;
 
                 // TODO make these values command line settings
                 let c = num_complex::Complex::new(-0.4, 0.6);
                 let mut z = num_complex::Complex::new(cx, cy);
 
-                let mut i = 0;
+                let mut i: u8 = 0;
                 while i < 255 && z.norm() <= 2.0 {
                     z = z * z + c;
                     i += 1;
@@ -172,27 +172,27 @@ impl Set {
         }
 
         // Set the image scaling
-        let scale_x = MANDL_SCALE_FACTOR / width as f32;
-        let scale_y = MANDL_SCALE_FACTOR / height as f32;
+        let scale_x: f32 = MANDL_SCALE_FACTOR / width as f32;
+        let scale_y: f32 = MANDL_SCALE_FACTOR / height as f32;
 
         if self.debug {
             println!("Rendering Mandelbrot Set @ {}x{} in window {}x{}", width, height, self.image_buf.width(), self.image_buf.height());
         }
 
         // Shift 0-based axis to Mandelbrot Set co-ordinate space
-        let x_delta = 1.6; // 70% of width
-        let y_delta = (height as f32 / 2.0) * scale_y;
+        let x_delta: f32 = 1.6; // 70% of width
+        let y_delta: f32 = (height as f32 / 2.0) * scale_y;
 
         for x in 0..width {
             for y in 0..height {
                 // Generate  the number of iterations for a given pixel
-                let cx = x as f32 * scale_x - x_delta;
-                let cy = y as f32 * scale_y - y_delta;
+                let cx: f32 = x as f32 * scale_x - x_delta;
+                let cy: f32 = y as f32 * scale_y - y_delta;
 
                 let c = num_complex::Complex::new(cx, cy);
                 let mut z = num_complex::Complex::new(0.0, 0.0);
 
-                let mut i = 0;
+                let mut i: u8 = 0;
                 while i < 255 && z.norm_sqr() <= 4.0 {
                     z = z * z + c;
                     i += 1;
@@ -219,7 +219,7 @@ impl Set {
 fn main() {
 
     // Get the command line arguments except the first
-    let input = parse_args();
+    let input: Input = parse_args();
 
     // Generate the chosen Set
     let mut set = Set::new(input.image_size.0,
@@ -247,7 +247,7 @@ fn parse_args() -> Input {
                              image_name: "fractal.png".to_string(),
                              debug: false };
 
-    let mut is_value = false;
+    let mut is_value: bool = false;
     let mut arg_type: i32 = -1;
 
     for i in 1..args.len() {
