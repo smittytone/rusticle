@@ -1,7 +1,33 @@
-/*
- * IMPORTS
- *
- */
+//! Generate fractal images, eg. for desktop backgrounds.
+//!
+//! Written by Tony Smith @smittytone in Jan-Feb 2020
+//!
+//! MIT License
+//!
+//! Copyright (c) 2020 Tony Smith (@smittytone)
+//!
+//! Permission is hereby granted, free of charge, to any person obtaining a copy
+//! of this software and associated documentation files (the "Software"), to deal
+//! in the Software without restriction, including without limitation the rights
+//! to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//! copies of the Software, and to permit persons to whom the Software is
+//! furnished to do so, subject to the following conditions:
+//!
+//! The above copyright notice and this permission notice shall be included in all
+//! copies or substantial portions of the Software.
+//!
+//! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//! IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//! FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//! AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//! LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//! SOFTWARE.
+
+
+//
+// IMPORTS
+//
 extern crate image;
 extern crate num_complex;
 extern crate dirs;
@@ -10,11 +36,9 @@ use image::{ImageBuffer, Rgb};
 use std::str::FromStr;
 
 
-
-/*
- * CONSTANTS
- *
- */
+//
+// CONSTANTS
+//
 const TYPE_JULIA_SET: u8 = 0;
 const TYPE_MANDL_SET: u8 = 1;
 const JULIA_ASPECT_RATIO: f32 = 1.5;
@@ -23,14 +47,11 @@ const JULIA_Y_SCALE_FACTOR: f32 = 2.0;
 const MANDL_SCALE_FACTOR: f32 = 2.2;
 
 
-/*
- * STRUCTS
- *
- */
+//
+// STRUCTS
+//
 
-/*
- * Simple struct for command line args
- */
+/// A simple struct to hold per-run application settings
 struct Input {
     image_size: (u32, u32),
     image_name: String,
@@ -39,9 +60,7 @@ struct Input {
 }
 
 
-/*
- * A struct for rendering and saving various fractal sets
- */
+/// A struct for storing, rendering and saving a variety of fractal sets
 struct Set {
     image_buf: image::ImageBuffer<Rgb<u8>, Vec<u8>>,
     set_type: u8,
@@ -50,6 +69,19 @@ struct Set {
 
 impl Set {
 
+    /// Returns a Set with the specified properties
+    ///
+    /// # Arguments
+    ///
+    /// * `width`    - The number of horizontal pixels in the final image
+    /// * `height`   - The number of vertical pixels in the final image
+    /// * `set_type` - The type of set: 0 for Julia, 1 for Mandelbrot
+    /// * `debug`    - Should extra debug info be output
+    ///
+    /// # Returns
+    ///
+    /// * A new Set struct
+    ///
     pub fn new(width: u32, height: u32, set_type: u8, debug: bool) -> Set {
 
         // Create a new buffer
@@ -71,6 +103,15 @@ impl Set {
               debug: debug }
     }
 
+    /// Renders the chosen fractal.
+    ///
+    /// This is a public function which selects the relevant private
+    /// drawing function according to the Set's type value.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The Set struct itself
+    ///
     pub fn render(&mut self) {
 
         // Select the correct renderer for the specified set type
@@ -80,6 +121,16 @@ impl Set {
         }
     }
 
+    /// Saves the set's image buffer to disk.
+    ///
+    /// Typically called after the set has been rendered to the image buffer, ie.
+    /// the image buffer contains an image.
+    ///
+    /// # Arguments
+    ///
+    /// * `self`      - The Set struct itself
+    /// * `file_name` - A String containing the full path and name of the output image file
+    ///
     pub fn save(&self, file_name: String) {
 
         // Output the image to disk
@@ -87,6 +138,12 @@ impl Set {
         self.image_buf.save(file_name).expect("[ERROR] Could not save image file");
     }
 
+    /// Renders the Julia set into the Set's image bugger.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The Set struct itself
+    ///
     fn render_julia(&mut self) {
 
         // Render the Julia Set
@@ -153,6 +210,12 @@ impl Set {
         }
     }
 
+    /// Renders the Mandelbrot set into the Set's image bugger.
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The Set struct itself
+    ///
     fn render_mandel(&mut self) {
 
         // Render the Mandelbrot Set
@@ -211,10 +274,9 @@ impl Set {
 }
 
 
-/*
- * RUNTIME START
- *
- */
+//
+// RUNTIME START
+//
 
 fn main() {
 
@@ -233,9 +295,14 @@ fn main() {
 }
 
 
-/*
- * Parse the command line arguments
- */
+/// Parse the command line arguments and return them as an Input struct.
+///
+/// The Input struct is pre-populated with default values.
+///
+/// # Returns
+///
+/// * A new Input struct
+///
 fn parse_args() -> Input {
 
     // Get the command line arguments except the first
@@ -348,12 +415,11 @@ fn parse_args() -> Input {
     values
 }
 
-/*
- * Present help info
- *
- */
+/// Present application help information.
+///
 fn show_help() {
 
+    // Extract the app's current version from the cargo.toml file if we can
     if let Some(version) = option_env!("CARGO_PKG_VERSION") {
         println!("\nFractals version {}\n", version);
     } else {
@@ -369,10 +435,21 @@ fn show_help() {
 }
 
 
-/*
- * Extract two values in a multiplex argument, eg. 567x789 into a
- * two-value tuple
- */
+/// Extract and return the two numerical components of a two-part argument,
+/// eg. `1024x512`.
+///
+/// If the extraction fails, we currently return `(0, 0)` but we should probably
+/// return an Option<T> instead so that the caller can handle failures.
+///
+/// # Arguments
+///
+/// * `&str` - The argument as a slice.
+/// * `char` - The separator character, eg. `x` or `,`
+///
+/// # Returns
+///
+/// * A tuple of two u32s representing the extracted values, eg. `(1024, 512)`.
+///
 fn parse_pair(string: &str, separator: char) -> (u32, u32) {
 
     if let Some(index) = string.find(separator) {
